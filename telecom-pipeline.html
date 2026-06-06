@@ -26,14 +26,15 @@ body { font-family: 'Segoe UI', Arial; background: #667eea; }
 .page { display: none; }
 .page.active { display: block; }
 .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.pipeline-stages { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 20px; }
-.stage-column { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+.pipeline-stages { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; overflow-x: auto; }
+.stage-column { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; min-width: 200px; }
 .stage-header { padding: 15px; font-weight: bold; color: white; text-align: center; }
-.stage-header.stage1 { background: #667eea; }
-.stage-header.stage2 { background: #764ba2; }
-.stage-header.stage3 { background: #f093fb; }
-.stage-header.stage4 { background: #4facfe; }
-.stage-header.stage5 { background: #00aa00; }
+.stage-header.stage0 { background: #667eea; }
+.stage-header.stage1 { background: #764ba2; }
+.stage-header.stage2 { background: #f093fb; }
+.stage-header.stage3 { background: #4facfe; }
+.stage-header.stage4 { background: #ff9800; }
+.stage-header.stage5 { background: #00cc00; }
 .stage-count { font-size: 24px; font-weight: bold; }
 .stage-label { font-size: 12px; margin-top: 5px; }
 .deals-container { padding: 15px; min-height: 400px; }
@@ -66,7 +67,8 @@ body { font-family: 'Segoe UI', Arial; background: #667eea; }
 .deal-status.presales { background: #764ba2; color: white; }
 .deal-status.pricing { background: #f093fb; color: white; }
 .deal-status.agreement { background: #4facfe; color: white; }
-.deal-status.closed { background: #00aa00; color: white; }
+.deal-status.signed { background: #ff9800; color: white; }
+.deal-status.closed { background: #00cc00; color: white; }
 .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
 table { width: 100%; border-collapse: collapse; }
 th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: bold; border-bottom: 1px solid #ddd; }
@@ -381,7 +383,8 @@ const STAGES = {
   1: 'PreSales',
   2: 'Pricing',
   3: 'Agreement',
-  4: 'Closed'
+  4: 'Signed',
+  5: 'Closed'
 };
 
 const STAGE_COLORS = {
@@ -389,7 +392,8 @@ const STAGE_COLORS = {
   1: '#764ba2',
   2: '#f093fb',
   3: '#4facfe',
-  4: '#00aa00'
+  4: '#ff9800',
+  5: '#00cc00'
 };
 
 let appData = {
@@ -403,7 +407,7 @@ let appData = {
     { id: 1, name: 'Acme Corp - Enterprise', customer: 'Acme Corporation', amount: '$150,000', stage: 1, repId: 2, description: 'Enterprise telecom package' },
     { id: 2, name: 'TechStart Inc', customer: 'TechStart Inc', amount: '$85,000', stage: 2, repId: 3, description: 'Small business package' },
     { id: 3, name: 'Global Industries', customer: 'Global Industries', amount: '$200,000', stage: 0, repId: 2, description: 'Large enterprise request' },
-    { id: 4, name: 'LocalBiz Ltd', customer: 'LocalBiz Ltd', amount: '$45,000', stage: 4, repId: 3, description: 'Closed deal' }
+    { id: 4, name: 'LocalBiz Ltd', customer: 'LocalBiz Ltd', amount: '$45,000', stage: 5, repId: 3, description: 'Closed deal' }
   ]
 };
 
@@ -465,7 +469,7 @@ function showPage(page) {
 }
 
 function renderPipeline() {
-  const stages = [0, 1, 2, 3, 4];
+  const stages = [0, 1, 2, 3, 4, 5];
   let stagesHtml = '';
   let totalValue = 0;
   let totalDeals = appData.deals.length;
@@ -475,7 +479,7 @@ function renderPipeline() {
     const dealsInStage = appData.deals.filter(d => d.stage === stage);
     const stageValue = dealsInStage.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
     totalValue += stageValue;
-    if (stage === 4) closedCount = dealsInStage.length;
+    if (stage === 5) closedCount = dealsInStage.length;
 
     let dealsHtml = '';
     dealsInStage.forEach(deal => {
@@ -487,7 +491,7 @@ function renderPipeline() {
           <p style="font-size: 11px; color: #999;">${deal.description}</p>
           <div class="actions">
             <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="event.stopPropagation(); moveDeal(${deal.id}, ${stage > 0 ? stage - 1 : stage})">← Back</button>
-            ${stage < 4 ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px;" onclick="event.stopPropagation(); moveDeal(${deal.id}, ${stage + 1})">Forward →</button>` : ''}
+            ${stage < 5 ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px;" onclick="event.stopPropagation(); moveDeal(${deal.id}, ${stage + 1})">Forward →</button>` : ''}
           </div>
         </div>
       `;
@@ -515,7 +519,7 @@ function renderPipeline() {
 function moveDeal(dealId, newStage) {
   const deal = appData.deals.find(d => d.id === dealId);
   if (deal) {
-    deal.stage = Math.max(0, Math.min(4, newStage));
+    deal.stage = Math.max(0, Math.min(5, newStage));
     saveData();
     renderPipeline();
     alert(`✓ Deal moved to ${STAGES[deal.stage]}`);
@@ -575,7 +579,7 @@ function renderStageChart() {
   if (!ctx) return;
   if (window.stageChartInstance) window.stageChartInstance.destroy();
   
-  const stages = [0, 1, 2, 3, 4];
+  const stages = [0, 1, 2, 3, 4, 5];
   const stageValues = stages.map(s => {
     const value = appData.deals.filter(d => d.stage === s).reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
     return value / 1000;
@@ -626,9 +630,10 @@ function renderProgressionReport() {
   
   salesReps.forEach(rep => {
     const repDeals = appData.deals.filter(d => d.repId === rep.id);
+    const closedDeals = repDeals.filter(d => d.stage === 5).length;
     html += `<div class="stage-progression">
       <strong>${rep.name}</strong>
-      <p>Total: ${repDeals.length} deals | $${repDeals.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0) / 1000}K</p>
+      <p>Total Deals: ${repDeals.length} | Closed: ${closedDeals} | Pipeline: $${repDeals.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0) / 1000}K</p>
     </div>`;
   });
   
@@ -658,7 +663,7 @@ function renderMyDeals() {
 
 function renderMyPerformance() {
   const myDeals = appData.deals.filter(d => d.repId === appData.currentUser.id);
-  const myClosedDeals = myDeals.filter(d => d.stage === 4);
+  const myClosedDeals = myDeals.filter(d => d.stage === 5);
   const myPipelineValue = myDeals.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
   const myClosedValue = myClosedDeals.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
   
@@ -676,15 +681,15 @@ function renderMyChart() {
   if (window.myChartInstance) window.myChartInstance.destroy();
   
   const myDeals = appData.deals.filter(d => d.repId === appData.currentUser.id);
-  const stageBreakdown = [0, 1, 2, 3, 4].map(s => myDeals.filter(d => d.stage === s).length);
+  const stageBreakdown = [0, 1, 2, 3, 4, 5].map(s => myDeals.filter(d => d.stage === s).length);
   
   window.myChartInstance = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: [0, 1, 2, 3, 4].map(s => STAGES[s]),
+      labels: [0, 1, 2, 3, 4, 5].map(s => STAGES[s]),
       datasets: [{
         data: stageBreakdown,
-        backgroundColor: [0, 1, 2, 3, 4].map(s => STAGE_COLORS[s])
+        backgroundColor: [0, 1, 2, 3, 4, 5].map(s => STAGE_COLORS[s])
       }]
     },
     options: { responsive: true, maintainAspectRatio: true }
