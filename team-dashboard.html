@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Team Sales Dashboard - Collaboration Platform</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial; background: #667eea; }
+.app { display: flex; height: 100vh; }
+.sidebar { width: 250px; background: #333; color: white; padding: 20px; overflow-y: auto; }
+.sidebar h2 { margin-bottom: 20px; }
+.sidebar .user-info { background: #444; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+.sidebar a { display: block; padding: 10px; margin: 5px 0; border-radius: 5px; cursor: pointer; color: white; text-decoration: none; }
+.sidebar a:hover { background: #667eea; }
+.sidebar a.active { background: #667eea; font-weight: bold; }
+.content { flex: 1; overflow-y: auto; padding: 20px; }
+.top-bar { background: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.btn { padding: 10px 15px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+.btn:hover { background: #764ba2; }
+.btn-danger { background: #ff4444; }
+.btn-danger:hover { background: #cc0000; }
+.btn-success { background: #00aa00; }
+.btn-success:hover { background: #008800; }
+.page { display: none; }
+.page.active { display: block; }
+.card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+.metric-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.metric-card h3 { color: #999; font-size: 12px; margin-bottom: 10px; }
+.metric-card .value { font-size: 24px; font-weight: bold; color: #333; }
+.metric-card .change { font-size: 12px; color: green; margin-top: 5px; }
+.team-list { list-style: none; }
+.team-member { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.team-member .info { flex: 1; }
+.team-member .status { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+.status.active { background: #e8f5e9; color: #2e7d32; }
+.status.pending { background: #fff3cd; color: #ff9800; }
+.status.approved { background: #c8e6c9; color: #1b5e20; }
+.monthly-report { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+.monthly-report h3 { margin-bottom: 15px; }
+.report-item { display: grid; grid-template-columns: 1fr 100px 100px 100px; gap: 15px; padding: 10px 0; border-bottom: 1px solid #eee; align-items: center; }
+.report-item:last-child { border-bottom: none; }
+.badge { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+.badge.admin { background: #667eea; color: white; }
+.badge.team { background: #4facfe; color: white; }
+table { width: 100%; border-collapse: collapse; }
+th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: bold; border-bottom: 1px solid #ddd; }
+td { padding: 12px; border-bottom: 1px solid #ddd; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+.modal.show { display: flex; }
+.modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+.modal-content h2 { margin-bottom: 20px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+.modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+@media (max-width: 768px) { .app { flex-direction: column; } .sidebar { width: 100%; } .metrics-grid { grid-template-columns: repeat(2, 1fr); } .charts-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <h2>📊 Dashboard</h2>
+    <div class="user-info">
+      <div id="currentUser">Manager</div>
+      <button class="btn" onclick="logout()" style="margin-top: 10px; width: 100%; padding: 8px;">Logout</button>
+    </div>
+    
+    <div id="managerMenu" style="display: none;">
+      <a class="menu-item active" onclick="showPage('dashboard')">📈 Dashboard</a>
+      <a class="menu-item" onclick="showPage('team')">👥 Team Management</a>
+      <a class="menu-item" onclick="showPage('updates')">📝 Team Updates</a>
+      <a class="menu-item" onclick="showPage('monthly')">📅 Monthly Reports</a>
+      <a class="menu-item" onclick="showPage('settings')">⚙️ Settings</a>
+    </div>
+    
+    <div id="teamMenu" style="display: none;">
+      <a class="menu-item active" onclick="showPage('update')">📝 Submit Update</a>
+      <a class="menu-item" onclick="showPage('history')">📋 My History</a>
+      <a class="menu-item" onclick="showPage('settings')">⚙️ Settings</a>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Dashboard Page (Manager) -->
+    <div id="dashboard" class="page active">
+      <div class="top-bar">
+        <h1>Sales Dashboard</h1>
+        <div>
+          <button class="btn" onclick="refreshData()">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <div class="metrics-grid" id="dashboardMetrics"></div>
+
+      <div class="charts-grid">
+        <div class="card">
+          <h2>Team Performance</h2>
+          <canvas id="teamChart"></canvas>
+        </div>
+        <div class="card">
+          <h2>Monthly Trend</h2>
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Management Page (Manager) -->
+    <div id="team" class="page">
+      <div class="top-bar">
+        <h1>Team Management</h1>
+        <button class="btn" onclick="openAddTeamModal()">+ Add Member</button>
+      </div>
+
+      <div class="card">
+        <h2>Team Members</h2>
+        <ul class="team-list" id="teamList"></ul>
+      </div>
+    </div>
+
+    <!-- Team Updates Page (Manager) -->
+    <div id="updates" class="page">
+      <div class="top-bar">
+        <h1>Team Updates</h1>
+      </div>
+
+      <div class="card">
+        <h2>Pending Approvals</h2>
+        <div id="pendingUpdates"></div>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h2>Approved Updates</h2>
+        <div id="approvedUpdates"></div>
+      </div>
+    </div>
+
+    <!-- Monthly Reports Page (Manager) -->
+    <div id="monthly" class="page">
+      <div class="top-bar">
+        <h1>Monthly Reports</h1>
+        <button class="btn" onclick="generateMonthlyReport()">📊 Generate Report</button>
+      </div>
+
+      <div class="monthly-report" id="monthlyReportContainer"></div>
+    </div>
+
+    <!-- Settings Page -->
+    <div id="settings" class="page">
+      <div class="top-bar">
+        <h1>Settings</h1>
+      </div>
+
+      <div class="card">
+        <h2>Account Settings</h2>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="settingsEmail" readonly>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <input type="text" id="settingsRole" readonly>
+        </div>
+        <button class="btn" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+
+    <!-- Submit Update Page (Team Member) -->
+    <div id="update" class="page">
+      <div class="top-bar">
+        <h1>Submit Monthly Update</h1>
+      </div>
+
+      <div class="card">
+        <h2>Your Sales Data</h2>
+        <div class="form-group">
+          <label>Revenue</label>
+          <input type="text" id="memberRevenue" placeholder="e.g., $50,000">
+        </div>
+        <div class="form-group">
+          <label>Units Sold</label>
+          <input type="number" id="memberUnits" placeholder="e.g., 250">
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea id="memberNotes" placeholder="Add any notes..." style="resize: vertical; min-height: 100px;"></textarea>
+        </div>
+        <button class="btn btn-success" onclick="submitTeamUpdate()">✓ Submit Update</button>
+      </div>
+
+      <div class="card" style="margin-top: 20px;">
+        <h2>My Recent Updates</h2>
+        <div id="memberHistory"></div>
+      </div>
+    </div>
+
+    <!-- History Page (Team Member) -->
+    <div id="history" class="page">
+      <div class="top-bar">
+        <h1>My Update History</h1>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Revenue</th>
+              <th>Units</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="historyTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Team Modal -->
+<div id="addTeamModal" class="modal">
+  <div class="modal-content">
+    <h2>Add Team Member</h2>
+    <div class="form-group">
+      <label>Name</label>
+      <input type="text" id="newTeamName">
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="newTeamEmail">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="newTeamPassword">
+    </div>
+    <div class="modal-buttons">
+      <button class="btn" onclick="closeAddTeamModal()">Cancel</button>
+      <button class="btn btn-success" onclick="addTeamMember()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Login Modal -->
+<div id="loginModal" class="modal show">
+  <div class="modal-content">
+    <h2>Login</h2>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="manager@company.com or team@company.com">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="password">
+    </div>
+    <p style="font-size: 12px; color: #666; margin: 10px 0;">Demo: manager@company.com / password123</p>
+    <p style="font-size: 12px; color: #666; margin: 10px 0;">Demo: team@company.com / password123</p>
+    <div class="modal-buttons">
+      <button class="btn btn-success" onclick="login()">Login</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Data structure
+let appData = {
+  currentUser: null,
+  users: [
+    { id: 1, name: 'Manager', email: 'manager@company.com', password: 'password123', role: 'manager' },
+    { id: 2, name: 'John Sales', email: 'team@company.com', password: 'password123', role: 'team', teamLead: 'Manager' }
+  ],
+  updates: [
+    { id: 1, userId: 2, revenue: '$45,000', units: 250, notes: 'Great Q1', status: 'approved', date: '2024-01-15' },
+    { id: 2, userId: 2, revenue: '$52,000', units: 280, notes: 'Exceeded target', status: 'pending', date: '2024-02-15' }
+  ],
+  metrics: {
+    totalRevenue: '$385,000',
+    totalSales: 3810,
+    avgOrder: '$101',
+    growth: '7.2%'
+  }
+};
+
+// Load from localStorage
+function loadAppData() {
+  const saved = localStorage.getItem('teamDashboardData');
+  if (saved) appData = JSON.parse(saved);
+}
+
+// Save to localStorage
+function saveAppData() {
+  localStorage.setItem('teamDashboardData', JSON.stringify(appData));
+}
+
+// Login
+function login() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  
+  const user = appData.users.find(u => u.email === email && u.password === password);
+  if (user) {
+    appData.currentUser = user;
+    saveAppData();
+    document.getElementById('loginModal').classList.remove('show');
+    document.getElementById('currentUser').textContent = user.name + ' (' + user.role + ')';
+    
+    if (user.role === 'manager') {
+      document.getElementById('managerMenu').style.display = 'block';
+      document.getElementById('teamMenu').style.display = 'none';
+    } else {
+      document.getElementById('managerMenu').style.display = 'none';
+      document.getElementById('teamMenu').style.display = 'block';
+      showPage('update');
+    }
+    
+    renderDashboard();
+  } else {
+    alert('Invalid credentials');
+  }
+}
+
+// Logout
+function logout() {
+  appData.currentUser = null;
+  saveAppData();
+  document.getElementById('loginModal').classList.add('show');
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+
+// Show page
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(page).classList.add('active');
+  document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  if (page === 'dashboard') renderDashboard();
+  else if (page === 'team') renderTeamList();
+  else if (page === 'updates') renderTeamUpdates();
+  else if (page === 'monthly') renderMonthlyReports();
+  else if (page === 'update') renderMemberUpdate();
+  else if (page === 'history') renderMemberHistory();
+}
+
+// Render Dashboard
+function renderDashboard() {
+  const metricsHtml = `
+    <div class="metric-card">
+      <h3>TOTAL REVENUE</h3>
+      <div class="value">${appData.metrics.totalRevenue}</div>
+      <div class="change">+12.5%</div>
+    </div>
+    <div class="metric-card">
+      <h3>TOTAL SALES</h3>
+      <div class="value">${appData.metrics.totalSales}</div>
+      <div class="change">+8.3%</div>
+    </div>
+    <div class="metric-card">
+      <h3>AVG ORDER VALUE</h3>
+      <div class="value">${appData.metrics.avgOrder}</div>
+      <div class="change">+4.2%</div>
+    </div>
+    <div class="metric-card">
+      <h3>GROWTH RATE</h3>
+      <div class="value">${appData.metrics.growth}</div>
+      <div class="change">+2.1%</div>
+    </div>
+  `;
+  document.getElementById('dashboardMetrics').innerHTML = metricsHtml;
+  
+  renderTeamChart();
+  renderTrendChart();
+}
+
+// Render charts
+function renderTeamChart() {
+  const ctx = document.getElementById('teamChart');
+  if (!ctx) return;
+  if (window.teamChartInstance) window.teamChartInstance.destroy();
+  
+  window.teamChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: appData.users.filter(u => u.role === 'team').map(u => u.name),
+      datasets: [{
+        label: 'Revenue',
+        data: [45000, 52000, 38000, 41000],
+        backgroundColor: '#667eea'
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function renderTrendChart() {
+  const ctx = document.getElementById('trendChart');
+  if (!ctx) return;
+  if (window.trendChartInstance) window.trendChartInstance.destroy();
+  
+  window.trendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      datasets: [{
+        label: 'Monthly Revenue',
+        data: [300000, 310000, 320000, 340000, 350000, 385000],
+        borderColor: '#667eea',
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        borderWidth: 2,
+        tension: 0.4
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: true }
+  });
+}
+
+// Team Management
+function renderTeamList() {
+  const teamMembers = appData.users.filter(u => u.role === 'team');
+  let html = '';
+  
+  teamMembers.forEach(member => {
+    const updates = appData.updates.filter(u => u.userId === member.id);
+    const lastUpdate = updates[updates.length - 1];
+    const status = lastUpdate ? lastUpdate.status : 'inactive';
+    
+    html += `
+      <li class="team-member">
+        <div class="info">
+          <strong>${member.name}</strong>
+          <p style="font-size: 12px; color: #666;">${member.email}</p>
+        </div>
+        <span class="status ${status}">${status}</span>
+        <button class="btn" onclick="removeMember(${member.id})">Remove</button>
+      </li>
+    `;
+  });
+  
+  document.getElementById('teamList').innerHTML = html;
+}
+
+function openAddTeamModal() {
+  document.getElementById('addTeamModal').classList.add('show');
+}
+
+function closeAddTeamModal() {
+  document.getElementById('addTeamModal').classList.remove('show');
+}
+
+function addTeamMember() {
+  const name = document.getElementById('newTeamName').value;
+  const email = document.getElementById('newTeamEmail').value;
+  const password = document.getElementById('newTeamPassword').value;
+  
+  if (!name || !email || !password) {
+    alert('All fields required');
+    return;
+  }
+  
+  const newMember = {
+    id: appData.users.length + 1,
+    name: name,
+    email: email,
+    password: password,
+    role: 'team',
+    teamLead: appData.currentUser.name
+  };
+  
+  appData.users.push(newMember);
+  saveAppData();
+  alert('✅ Team member added! Email: ' + email);
+  
+  document.getElementById('newTeamName').value = '';
+  document.getElementById('newTeamEmail').value = '';
+  document.getElementById('newTeamPassword').value = '';
+  closeAddTeamModal();
+  renderTeamList();
+}
+
+function removeMember(userId) {
+  if (confirm('Remove this team member?')) {
+    appData.users = appData.users.filter(u => u.id !== userId);
+    appData.updates = appData.updates.filter(u => u.userId !== userId);
+    saveAppData();
+    renderTeamList();
+  }
+}
+
+// Team Updates
+function renderTeamUpdates() {
+  const pending = appData.updates.filter(u => u.status === 'pending');
+  const approved = appData.updates.filter(u => u.status === 'approved');
+  
+  let pendingHtml = '';
+  pending.forEach(update => {
+    const user = appData.users.find(u => u.id === update.userId);
+    pendingHtml += `
+      <div style="background: #f9f9f9; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #ff9800;">
+        <strong>${user.name}</strong> - ${update.date}
+        <p>Revenue: ${update.revenue} | Units: ${update.units}</p>
+        <p>Notes: ${update.notes}</p>
+        <button class="btn btn-success" onclick="approveUpdate(${update.id})">✓ Approve</button>
+        <button class="btn btn-danger" onclick="rejectUpdate(${update.id})">✗ Reject</button>
+      </div>
+    `;
+  });
+  
+  let approvedHtml = '';
+  approved.forEach(update => {
+    const user = appData.users.find(u => u.id === update.userId);
+    approvedHtml += `
+      <div style="background: #f0f9f0; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #4caf50;">
+        <strong>${user.name}</strong> - ${update.date}
+        <p>Revenue: ${update.revenue} | Units: ${update.units}</p>
+        <span style="background: #c8e6c9; padding: 5px 10px; border-radius: 20px; font-size: 12px; color: #1b5e20;">✓ Approved</span>
+      </div>
+    `;
+  });
+  
+  document.getElementById('pendingUpdates').innerHTML = pendingHtml || '<p>No pending updates</p>';
+  document.getElementById('approvedUpdates').innerHTML = approvedHtml || '<p>No approved updates</p>';
+}
+
+function approveUpdate(updateId) {
+  const update = appData.updates.find(u => u.id === updateId);
+  update.status = 'approved';
+  saveAppData();
+  alert('✅ Update approved!');
+  renderTeamUpdates();
+}
+
+function rejectUpdate(updateId) {
+  const update = appData.updates.find(u => u.id === updateId);
+  update.status = 'rejected';
+  saveAppData();
+  alert('❌ Update rejected!');
+  renderTeamUpdates();
+}
+
+// Monthly Reports
+function renderMonthlyReports() {
+  const approvedUpdates = appData.updates.filter(u => u.status === 'approved');
+  let totalRevenue = 0;
+  let totalUnits = 0;
+  
+  let html = '<h3>Monthly Summary</h3>';
+  
+  approvedUpdates.forEach(update => {
+    const user = appData.users.find(u => u.id === update.userId);
+    const revenue = parseInt(update.revenue.replace(/\D/g, ''));
+    totalRevenue += revenue;
+    totalUnits += update.units;
+    
+    html += `
+      <div class="report-item">
+        <div><strong>${user.name}</strong> <br> ${update.date}</div>
+        <div>${update.revenue}</div>
+        <div>${update.units} units</div>
+        <div><span class="badge admin">Approved</span></div>
+      </div>
+    `;
+  });
+  
+  html += `<div style="margin-top: 20px; padding-top: 15px; border-top: 2px solid #ddd; font-weight: bold;">
+    <div class="report-item">
+      <div>TOTAL</div>
+      <div>$${totalRevenue.toLocaleString()}</div>
+      <div>${totalUnits} units</div>
+      <div></div>
+    </div>
+  </div>`;
+  
+  document.getElementById('monthlyReportContainer').innerHTML = html;
+}
+
+function generateMonthlyReport() {
+  const monthlyData = [];
+  appData.users.filter(u => u.role === 'team').forEach(user => {
+    const userUpdates = appData.updates.filter(u => u.userId === user.id && u.status === 'approved');
+    if (userUpdates.length > 0) {
+      const lastUpdate = userUpdates[userUpdates.length - 1];
+      monthlyData.push(`${user.name},${lastUpdate.revenue},${lastUpdate.units},${lastUpdate.notes}`);
+    }
+  });
+  
+  const csv = 'Name,Revenue,Units,Notes\n' + monthlyData.join('\n');
+  const element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(csv));
+  element.setAttribute('download', 'monthly_report_' + new Date().toISOString().split('T')[0] + '.csv');
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
+  alert('✅ Report downloaded!');
+}
+
+// Member Update
+function renderMemberUpdate() {
+  const userUpdates = appData.updates.filter(u => u.userId === appData.currentUser.id);
+  
+  let historyHtml = '';
+  userUpdates.forEach(update => {
+    historyHtml += `
+      <div style="background: #f9f9f9; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 13px;">
+        <strong>${update.date}</strong> - ${update.revenue}, ${update.units} units
+        <span style="background: ${update.status === 'approved' ? '#c8e6c9' : '#fff3cd'}; padding: 3px 8px; border-radius: 3px; font-size: 11px;">
+          ${update.status}
+        </span>
+      </div>
+    `;
+  });
+  
+  document.getElementById('memberHistory').innerHTML = historyHtml || '<p>No updates yet</p>';
+}
+
+function submitTeamUpdate() {
+  const revenue = document.getElementById('memberRevenue').value;
+  const units = document.getElementById('memberUnits').value;
+  const notes = document.getElementById('memberNotes').value;
+  
+  if (!revenue || !units) {
+    alert('Please fill in all required fields');
+    return;
+  }
+  
+  const newUpdate = {
+    id: appData.updates.length + 1,
+    userId: appData.currentUser.id,
+    revenue: revenue,
+    units: parseInt(units),
+    notes: notes,
+    status: 'pending',
+    date: new Date().toISOString().split('T')[0]
+  };
+  
+  appData.updates.push(newUpdate);
+  saveAppData();
+  alert('✅ Update submitted! Waiting for manager approval...');
+  
+  document.getElementById('memberRevenue').value = '';
+  document.getElementById('memberUnits').value = '';
+  document.getElementById('memberNotes').value = '';
+  renderMemberUpdate();
+}
+
+// Member History
+function renderMemberHistory() {
+  const userUpdates = appData.updates.filter(u => u.userId === appData.currentUser.id);
+  
+  let html = '';
+  userUpdates.forEach(update => {
+    html += `
+      <tr>
+        <td>${update.date}</td>
+        <td>${update.revenue}</td>
+        <td>${update.units}</td>
+        <td><span style="background: ${update.status === 'approved' ? '#c8e6c9' : update.status === 'pending' ? '#fff3cd' : '#ffcccc'}; padding: 5px 10px; border-radius: 3px; font-weight: bold;">${update.status}</span></td>
+        <td><button class="btn" onclick="alert('Update from ' + new Date('${update.date}').toLocaleDateString())">View</button></td>
+      </tr>
+    `;
+  });
+  
+  document.getElementById('historyTable').innerHTML = html || '<tr><td colspan="5">No updates</td></tr>';
+}
+
+function refreshData() {
+  renderDashboard();
+  alert('✅ Data refreshed!');
+}
+
+// Initialize
+loadAppData();
+if (appData.currentUser) {
+  document.getElementById('loginModal').classList.remove('show');
+  document.getElementById('currentUser').textContent = appData.currentUser.name;
+  if (appData.currentUser.role === 'manager') {
+    document.getElementById('managerMenu').style.display = 'block';
+  } else {
+    document.getElementById('teamMenu').style.display = 'block';
+    showPage('update');
+  }
+  renderDashboard();
+}
+</script>
+</body>
+</html>
