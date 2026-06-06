@@ -5,7 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Segoe UI', Arial; background: #667eea; }
+body { font-family: 'Segoe UI', Arial; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
 .app { display: flex; height: 100vh; }
 .sidebar { width: 250px; background: #333; color: white; padding: 20px; overflow-y: auto; }
 .sidebar h2 { margin-bottom: 20px; }
@@ -74,12 +74,107 @@ table { width: 100%; border-collapse: collapse; }
 th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: bold; border-bottom: 1px solid #ddd; }
 td { padding: 12px; border-bottom: 1px solid #ddd; }
 .stage-progression { padding: 15px; background: #f9f9f9; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #667eea; }
+.login-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
+.login-box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 400px; width: 90%; }
+.login-box h1 { margin-bottom: 10px; color: #333; text-align: center; }
+.login-box .tagline { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+.login-options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+.login-card { padding: 20px; border: 2px solid #ddd; border-radius: 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.login-card:hover { border-color: #667eea; background: #f9f9f9; }
+.login-card.manager { border-color: #667eea; background: #f0f3ff; }
+.login-card.sales { border-color: #f093fb; background: #fff0f8; }
+.login-card h3 { margin: 10px 0 5px 0; }
+.login-card p { font-size: 12px; color: #666; }
+.login-card .icon { font-size: 32px; margin-bottom: 10px; }
+.login-form { display: none; }
+.login-form.show { display: block; }
+.back-button { background: #ddd; color: #333; margin-bottom: 20px; }
+.back-button:hover { background: #ccc; }
+.divider { text-align: center; margin: 20px 0; color: #999; }
+.preset-users { margin-top: 20px; }
+.preset-users h4 { margin-bottom: 10px; color: #666; }
+.preset-user { background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 5px; font-size: 12px; cursor: pointer; }
+.preset-user:hover { background: #e9e9e9; }
 @media (max-width: 1024px) { .pipeline-stages { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 768px) { .app { flex-direction: column; } .sidebar { width: 100%; } .pipeline-stages { grid-template-columns: repeat(2, 1fr); } .metrics-grid { grid-template-columns: repeat(2, 1fr); } .charts-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .app { flex-direction: column; } .sidebar { width: 100%; } .pipeline-stages { grid-template-columns: repeat(2, 1fr); } .metrics-grid { grid-template-columns: repeat(2, 1fr); } .charts-grid { grid-template-columns: 1fr; } .login-options { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
-<div class="app">
+<div id="loginPage" class="login-container">
+  <div class="login-box">
+    <h1>📞 Telecom Sales Pipeline</h1>
+    <p class="tagline">Manage your sales process from Request to Closed</p>
+    
+    <div id="roleSelection">
+      <div class="login-options">
+        <div class="login-card manager" onclick="selectRole('manager')">
+          <div class="icon">👨‍💼</div>
+          <h3>Manager</h3>
+          <p>View all deals & team</p>
+        </div>
+        <div class="login-card sales" onclick="selectRole('sales')">
+          <div class="icon">🤝</div>
+          <h3>Sales Rep</h3>
+          <p>Create & manage deals</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="managerForm" class="login-form">
+      <button class="btn back-button" onclick="backToRoles()">← Back</button>
+      <h2>Manager Login</h2>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="managerEmail" placeholder="manager@company.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="managerPassword" placeholder="••••••••">
+      </div>
+      <button class="btn btn-success" onclick="login('manager')" style="width: 100%;">Sign In</button>
+      
+      <div class="divider">OR</div>
+      
+      <div class="preset-users">
+        <h4>Quick Login (Demo):</h4>
+        <div class="preset-user" onclick="quickLogin('manager@company.com', 'password123', 'manager')">
+          👤 Manager<br>
+          <small>manager@company.com</small>
+        </div>
+      </div>
+    </div>
+
+    <div id="salesForm" class="login-form">
+      <button class="btn back-button" onclick="backToRoles()">← Back</button>
+      <h2>Sales Rep Login</h2>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="salesEmail" placeholder="sales@company.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="salesPassword" placeholder="••••••••">
+      </div>
+      <button class="btn btn-success" onclick="login('sales')" style="width: 100%;">Sign In</button>
+      
+      <div class="divider">OR</div>
+      
+      <div class="preset-users">
+        <h4>Quick Login (Demo):</h4>
+        <div class="preset-user" onclick="quickLogin('sales@company.com', 'password123', 'sales')">
+          🤝 John Sales<br>
+          <small>sales@company.com</small>
+        </div>
+        <div class="preset-user" onclick="quickLogin('sarah@company.com', 'password123', 'sales')">
+          🤝 Sarah Sales<br>
+          <small>sarah@company.com</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="appPage" class="app" style="display: none;">
   <div class="sidebar">
     <h2>📞 Telecom Sales</h2>
     <div class="user-info">
@@ -356,27 +451,6 @@ td { padding: 12px; border-bottom: 1px solid #ddd; }
   </div>
 </div>
 
-<!-- Login Modal -->
-<div id="loginModal" class="modal show">
-  <div class="modal-content">
-    <h2>Telecom Sales Pipeline Login</h2>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="loginEmail" placeholder="manager@company.com or sales@company.com">
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="loginPassword" placeholder="password">
-    </div>
-    <p style="font-size: 12px; color: #666; margin: 10px 0;">Demo Logins:</p>
-    <p style="font-size: 12px; color: #666; margin: 5px 0;">Manager: manager@company.com / password123</p>
-    <p style="font-size: 12px; color: #666; margin: 5px 0;">Sales Rep: sales@company.com / password123</p>
-    <div class="modal-buttons">
-      <button class="btn btn-success" onclick="login()" style="width: 100%;">Login</button>
-    </div>
-  </div>
-</div>
-
 <script>
 const STAGES = {
   0: 'Request',
@@ -420,38 +494,77 @@ function saveData() {
   localStorage.setItem('telecomPipelineData', JSON.stringify(appData));
 }
 
-function login() {
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPassword').value;
+function selectRole(role) {
+  document.getElementById('roleSelection').style.display = 'none';
+  if (role === 'manager') {
+    document.getElementById('managerForm').classList.add('show');
+  } else {
+    document.getElementById('salesForm').classList.add('show');
+  }
+}
+
+function backToRoles() {
+  document.getElementById('roleSelection').style.display = 'block';
+  document.getElementById('managerForm').classList.remove('show');
+  document.getElementById('salesForm').classList.remove('show');
+  document.getElementById('managerEmail').value = '';
+  document.getElementById('managerPassword').value = '';
+  document.getElementById('salesEmail').value = '';
+  document.getElementById('salesPassword').value = '';
+}
+
+function login(role) {
+  let email, password;
+  if (role === 'manager') {
+    email = document.getElementById('managerEmail').value;
+    password = document.getElementById('managerPassword').value;
+  } else {
+    email = document.getElementById('salesEmail').value;
+    password = document.getElementById('salesPassword').value;
+  }
   
   const user = appData.users.find(u => u.email === email && u.password === password);
   if (user) {
     appData.currentUser = user;
     saveData();
-    document.getElementById('loginModal').classList.remove('show');
-    document.getElementById('currentUser').textContent = user.name + ' (' + user.role + ')';
-    
-    if (user.role === 'manager') {
-      document.getElementById('managerMenu').style.display = 'block';
-      document.getElementById('teamMenu').style.display = 'none';
-      renderPipeline();
-    } else {
-      document.getElementById('managerMenu').style.display = 'none';
-      document.getElementById('teamMenu').style.display = 'block';
-      showPage('my-deals');
-      renderMyDeals();
-    }
+    showApp();
   } else {
     alert('Invalid credentials');
+  }
+}
+
+function quickLogin(email, password, role) {
+  const user = appData.users.find(u => u.email === email && u.password === password);
+  if (user) {
+    appData.currentUser = user;
+    saveData();
+    showApp();
+  }
+}
+
+function showApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('appPage').style.display = 'flex';
+  document.getElementById('currentUser').textContent = appData.currentUser.name + ' (' + appData.currentUser.role + ')';
+  
+  if (appData.currentUser.role === 'manager') {
+    document.getElementById('managerMenu').style.display = 'block';
+    document.getElementById('teamMenu').style.display = 'none';
+    renderPipeline();
+  } else {
+    document.getElementById('managerMenu').style.display = 'none';
+    document.getElementById('teamMenu').style.display = 'block';
+    showPage('my-deals');
+    renderMyDeals();
   }
 }
 
 function logout() {
   appData.currentUser = null;
   saveData();
-  document.getElementById('loginModal').classList.add('show');
-  document.getElementById('loginEmail').value = '';
-  document.getElementById('loginPassword').value = '';
+  document.getElementById('appPage').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+  backToRoles();
 }
 
 function showPage(page) {
@@ -883,17 +996,6 @@ function refreshPipeline() {
 }
 
 loadData();
-if (appData.currentUser) {
-  document.getElementById('loginModal').classList.remove('show');
-  document.getElementById('currentUser').textContent = appData.currentUser.name;
-  if (appData.currentUser.role === 'manager') {
-    document.getElementById('managerMenu').style.display = 'block';
-    renderPipeline();
-  } else {
-    document.getElementById('teamMenu').style.display = 'block';
-    renderMyDeals();
-  }
-}
 </script>
 </body>
 </html>
