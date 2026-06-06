@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Telecom Sales Pipeline - Stage Management</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial; background: #667eea; }
+.app { display: flex; height: 100vh; }
+.sidebar { width: 250px; background: #333; color: white; padding: 20px; overflow-y: auto; }
+.sidebar h2 { margin-bottom: 20px; }
+.sidebar .user-info { background: #444; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+.sidebar a { display: block; padding: 10px; margin: 5px 0; border-radius: 5px; cursor: pointer; color: white; text-decoration: none; }
+.sidebar a:hover { background: #667eea; }
+.sidebar a.active { background: #667eea; font-weight: bold; }
+.content { flex: 1; overflow-y: auto; padding: 20px; }
+.top-bar { background: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.btn { padding: 10px 15px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+.btn:hover { background: #764ba2; }
+.btn-danger { background: #ff4444; }
+.btn-danger:hover { background: #cc0000; }
+.btn-success { background: #00aa00; }
+.btn-success:hover { background: #008800; }
+.btn-secondary { background: #f093fb; }
+.btn-secondary:hover { background: #764ba2; }
+.page { display: none; }
+.page.active { display: block; }
+.card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.pipeline-stages { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 20px; }
+.stage-column { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+.stage-header { padding: 15px; font-weight: bold; color: white; text-align: center; }
+.stage-header.stage1 { background: #667eea; }
+.stage-header.stage2 { background: #764ba2; }
+.stage-header.stage3 { background: #f093fb; }
+.stage-header.stage4 { background: #4facfe; }
+.stage-header.stage5 { background: #00aa00; }
+.stage-count { font-size: 24px; font-weight: bold; }
+.stage-label { font-size: 12px; margin-top: 5px; }
+.deals-container { padding: 15px; min-height: 400px; }
+.deal-card { background: #f9f9f9; border: 2px solid #ddd; padding: 12px; margin-bottom: 10px; border-radius: 5px; cursor: pointer; transition: all 0.2s; }
+.deal-card:hover { border-color: #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.deal-card h4 { margin: 0 0 5px 0; }
+.deal-card p { font-size: 12px; color: #666; margin: 3px 0; }
+.deal-card .amount { font-weight: bold; color: #667eea; }
+.deal-card .actions { margin-top: 8px; }
+.deal-card button { padding: 4px 8px; font-size: 11px; margin-right: 5px; }
+.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+.metric-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.metric-card h3 { color: #999; font-size: 12px; margin-bottom: 10px; }
+.metric-card .value { font-size: 24px; font-weight: bold; color: #333; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; overflow-y: auto; }
+.modal.show { display: flex; }
+.modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%; margin: auto; max-height: 80vh; overflow-y: auto; }
+.modal-content h2 { margin-bottom: 20px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+.modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.team-list { list-style: none; }
+.team-member { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.team-member .info { flex: 1; }
+.status { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+.status.active { background: #e8f5e9; color: #2e7d32; }
+.deal-status { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+.deal-status.request { background: #667eea; color: white; }
+.deal-status.presales { background: #764ba2; color: white; }
+.deal-status.pricing { background: #f093fb; color: white; }
+.deal-status.agreement { background: #4facfe; color: white; }
+.deal-status.closed { background: #00aa00; color: white; }
+.charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+table { width: 100%; border-collapse: collapse; }
+th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: bold; border-bottom: 1px solid #ddd; }
+td { padding: 12px; border-bottom: 1px solid #ddd; }
+.stage-progression { padding: 15px; background: #f9f9f9; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #667eea; }
+@media (max-width: 1024px) { .pipeline-stages { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .app { flex-direction: column; } .sidebar { width: 100%; } .pipeline-stages { grid-template-columns: repeat(2, 1fr); } .metrics-grid { grid-template-columns: repeat(2, 1fr); } .charts-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <h2>📞 Telecom Sales</h2>
+    <div class="user-info">
+      <div id="currentUser">Manager</div>
+      <button class="btn" onclick="logout()" style="margin-top: 10px; width: 100%; padding: 8px;">Logout</button>
+    </div>
+    
+    <div id="managerMenu" style="display: none;">
+      <a class="menu-item active" onclick="showPage('pipeline')">📊 Sales Pipeline</a>
+      <a class="menu-item" onclick="showPage('deals')">🤝 All Deals</a>
+      <a class="menu-item" onclick="showPage('team')">👥 Sales Team</a>
+      <a class="menu-item" onclick="showPage('reports')">📈 Reports</a>
+      <a class="menu-item" onclick="showPage('settings')">⚙️ Settings</a>
+    </div>
+    
+    <div id="teamMenu" style="display: none;">
+      <a class="menu-item active" onclick="showPage('my-deals')">🤝 My Deals</a>
+      <a class="menu-item" onclick="showPage('create-deal')">➕ Create Deal</a>
+      <a class="menu-item" onclick="showPage('my-reports')">📋 My Performance</a>
+      <a class="menu-item" onclick="showPage('settings')">⚙️ Settings</a>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- Pipeline View (Manager) -->
+    <div id="pipeline" class="page active">
+      <div class="top-bar">
+        <h1>Sales Pipeline</h1>
+        <button class="btn" onclick="refreshPipeline()">🔄 Refresh</button>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <h3>TOTAL PIPELINE VALUE</h3>
+          <div class="value" id="totalPipelineValue">$0</div>
+        </div>
+        <div class="metric-card">
+          <h3>TOTAL DEALS</h3>
+          <div class="value" id="totalDeals">0</div>
+        </div>
+        <div class="metric-card">
+          <h3>CLOSED DEALS</h3>
+          <div class="value" id="closedDeals">0</div>
+        </div>
+        <div class="metric-card">
+          <h3>WIN RATE</h3>
+          <div class="value" id="winRate">0%</div>
+        </div>
+      </div>
+
+      <div class="pipeline-stages" id="pipelineStages"></div>
+    </div>
+
+    <!-- All Deals View (Manager) -->
+    <div id="deals" class="page">
+      <div class="top-bar">
+        <h1>All Deals</h1>
+        <button class="btn" onclick="openCreateDealModal()">➕ New Deal</button>
+      </div>
+
+      <div class="card">
+        <table id="dealsTable">
+          <thead>
+            <tr>
+              <th>Deal Name</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Sales Rep</th>
+              <th>Stage</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="dealsList"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Team Management (Manager) -->
+    <div id="team" class="page">
+      <div class="top-bar">
+        <h1>Sales Team</h1>
+        <button class="btn" onclick="openAddTeamModal()">➕ Add Member</button>
+      </div>
+
+      <div class="card">
+        <h2>Team Members</h2>
+        <ul class="team-list" id="teamList"></ul>
+      </div>
+    </div>
+
+    <!-- Reports Page (Manager) -->
+    <div id="reports" class="page">
+      <div class="top-bar">
+        <h1>Sales Reports</h1>
+      </div>
+
+      <div class="charts-grid">
+        <div class="card">
+          <h2>Pipeline by Stage</h2>
+          <canvas id="stageChart"></canvas>
+        </div>
+        <div class="card">
+          <h2>Team Performance</h2>
+          <canvas id="teamChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Stage Progression</h2>
+        <div id="progressionReport"></div>
+      </div>
+    </div>
+
+    <!-- Settings (All Users) -->
+    <div id="settings" class="page">
+      <div class="top-bar">
+        <h1>Settings</h1>
+      </div>
+
+      <div class="card">
+        <h2>Account Settings</h2>
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" id="settingsName" readonly>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="settingsEmail" readonly>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <input type="text" id="settingsRole" readonly>
+        </div>
+      </div>
+    </div>
+
+    <!-- My Deals (Sales Rep) -->
+    <div id="my-deals" class="page">
+      <div class="top-bar">
+        <h1>My Deals</h1>
+        <button class="btn" onclick="openCreateDealModal()">➕ New Deal</button>
+      </div>
+
+      <div class="card">
+        <table id="myDealsTable">
+          <thead>
+            <tr>
+              <th>Deal Name</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Stage</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="myDealsList"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Create Deal (Sales Rep) -->
+    <div id="create-deal" class="page">
+      <div class="top-bar">
+        <h1>Create New Deal</h1>
+      </div>
+
+      <div class="card">
+        <h2>New Deal Details</h2>
+        <div class="form-group">
+          <label>Deal Name</label>
+          <input type="text" id="newDealName" placeholder="e.g., Acme Corp - Enterprise Package">
+        </div>
+        <div class="form-group">
+          <label>Customer Name</label>
+          <input type="text" id="newDealCustomer" placeholder="e.g., Acme Corporation">
+        </div>
+        <div class="form-group">
+          <label>Deal Amount</label>
+          <input type="text" id="newDealAmount" placeholder="e.g., $50,000">
+        </div>
+        <div class="form-group">
+          <label>Deal Description</label>
+          <textarea id="newDealDescription" placeholder="Add details about the deal..." style="min-height: 100px;"></textarea>
+        </div>
+        <button class="btn btn-success" onclick="createNewDeal()" style="width: 100%;">✓ Create Deal</button>
+      </div>
+    </div>
+
+    <!-- My Performance (Sales Rep) -->
+    <div id="my-reports" class="page">
+      <div class="top-bar">
+        <h1>My Performance</h1>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <h3>MY PIPELINE VALUE</h3>
+          <div class="value" id="myPipelineValue">$0</div>
+        </div>
+        <div class="metric-card">
+          <h3>MY DEALS</h3>
+          <div class="value" id="myDealsCount">0</div>
+        </div>
+        <div class="metric-card">
+          <h3>CLOSED DEALS</h3>
+          <div class="value" id="myClosedDeals">0</div>
+        </div>
+        <div class="metric-card">
+          <h3>CLOSED VALUE</h3>
+          <div class="value" id="myClosedValue">$0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Deal Breakdown</h2>
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Deal Modal -->
+<div id="dealModal" class="modal">
+  <div class="modal-content">
+    <h2 id="dealModalTitle">Create New Deal</h2>
+    <div class="form-group">
+      <label>Deal Name</label>
+      <input type="text" id="modalDealName">
+    </div>
+    <div class="form-group">
+      <label>Customer</label>
+      <input type="text" id="modalDealCustomer">
+    </div>
+    <div class="form-group">
+      <label>Amount</label>
+      <input type="text" id="modalDealAmount">
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="modalDealDescription" style="min-height: 80px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Sales Rep</label>
+      <select id="modalDealRep">
+        <option value="">Select Sales Rep</option>
+      </select>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn" onclick="closeDealModal()">Cancel</button>
+      <button class="btn btn-success" onclick="saveDeal()">Save Deal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Team Modal -->
+<div id="addTeamModal" class="modal">
+  <div class="modal-content">
+    <h2>Add Sales Rep</h2>
+    <div class="form-group">
+      <label>Name</label>
+      <input type="text" id="newTeamName">
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="newTeamEmail">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="newTeamPassword">
+    </div>
+    <div class="modal-buttons">
+      <button class="btn" onclick="closeAddTeamModal()">Cancel</button>
+      <button class="btn btn-success" onclick="addTeamMember()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Login Modal -->
+<div id="loginModal" class="modal show">
+  <div class="modal-content">
+    <h2>Telecom Sales Pipeline Login</h2>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="manager@company.com or sales@company.com">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="password">
+    </div>
+    <p style="font-size: 12px; color: #666; margin: 10px 0;">Demo Logins:</p>
+    <p style="font-size: 12px; color: #666; margin: 5px 0;">Manager: manager@company.com / password123</p>
+    <p style="font-size: 12px; color: #666; margin: 5px 0;">Sales Rep: sales@company.com / password123</p>
+    <div class="modal-buttons">
+      <button class="btn btn-success" onclick="login()" style="width: 100%;">Login</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STAGES = {
+  0: 'Request',
+  1: 'PreSales',
+  2: 'Pricing',
+  3: 'Agreement',
+  4: 'Closed'
+};
+
+const STAGE_COLORS = {
+  0: '#667eea',
+  1: '#764ba2',
+  2: '#f093fb',
+  3: '#4facfe',
+  4: '#00aa00'
+};
+
+let appData = {
+  currentUser: null,
+  users: [
+    { id: 1, name: 'Manager', email: 'manager@company.com', password: 'password123', role: 'manager' },
+    { id: 2, name: 'John Sales', email: 'sales@company.com', password: 'password123', role: 'sales' },
+    { id: 3, name: 'Sarah Sales', email: 'sarah@company.com', password: 'password123', role: 'sales' }
+  ],
+  deals: [
+    { id: 1, name: 'Acme Corp - Enterprise', customer: 'Acme Corporation', amount: '$150,000', stage: 1, repId: 2, description: 'Enterprise telecom package' },
+    { id: 2, name: 'TechStart Inc', customer: 'TechStart Inc', amount: '$85,000', stage: 2, repId: 3, description: 'Small business package' },
+    { id: 3, name: 'Global Industries', customer: 'Global Industries', amount: '$200,000', stage: 0, repId: 2, description: 'Large enterprise request' },
+    { id: 4, name: 'LocalBiz Ltd', customer: 'LocalBiz Ltd', amount: '$45,000', stage: 4, repId: 3, description: 'Closed deal' }
+  ]
+};
+
+function loadData() {
+  const saved = localStorage.getItem('telecomPipelineData');
+  if (saved) appData = JSON.parse(saved);
+}
+
+function saveData() {
+  localStorage.setItem('telecomPipelineData', JSON.stringify(appData));
+}
+
+function login() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  
+  const user = appData.users.find(u => u.email === email && u.password === password);
+  if (user) {
+    appData.currentUser = user;
+    saveData();
+    document.getElementById('loginModal').classList.remove('show');
+    document.getElementById('currentUser').textContent = user.name + ' (' + user.role + ')';
+    
+    if (user.role === 'manager') {
+      document.getElementById('managerMenu').style.display = 'block';
+      document.getElementById('teamMenu').style.display = 'none';
+      renderPipeline();
+    } else {
+      document.getElementById('managerMenu').style.display = 'none';
+      document.getElementById('teamMenu').style.display = 'block';
+      showPage('my-deals');
+      renderMyDeals();
+    }
+  } else {
+    alert('Invalid credentials');
+  }
+}
+
+function logout() {
+  appData.currentUser = null;
+  saveData();
+  document.getElementById('loginModal').classList.add('show');
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(page).classList.add('active');
+  document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  if (page === 'pipeline') renderPipeline();
+  else if (page === 'deals') renderAllDeals();
+  else if (page === 'team') renderTeamList();
+  else if (page === 'reports') renderReports();
+  else if (page === 'my-deals') renderMyDeals();
+  else if (page === 'my-reports') renderMyPerformance();
+}
+
+function renderPipeline() {
+  const stages = [0, 1, 2, 3, 4];
+  let stagesHtml = '';
+  let totalValue = 0;
+  let totalDeals = appData.deals.length;
+  let closedCount = 0;
+
+  stages.forEach(stage => {
+    const dealsInStage = appData.deals.filter(d => d.stage === stage);
+    const stageValue = dealsInStage.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
+    totalValue += stageValue;
+    if (stage === 4) closedCount = dealsInStage.length;
+
+    let dealsHtml = '';
+    dealsInStage.forEach(deal => {
+      dealsHtml += `
+        <div class="deal-card" onclick="editDeal(${deal.id})">
+          <h4>${deal.name}</h4>
+          <p><strong>${deal.customer}</strong></p>
+          <p class="amount">${deal.amount}</p>
+          <p style="font-size: 11px; color: #999;">${deal.description}</p>
+          <div class="actions">
+            <button class="btn" style="padding: 4px 8px; font-size: 11px;" onclick="event.stopPropagation(); moveDeal(${deal.id}, ${stage > 0 ? stage - 1 : stage})">← Back</button>
+            ${stage < 4 ? `<button class="btn btn-success" style="padding: 4px 8px; font-size: 11px;" onclick="event.stopPropagation(); moveDeal(${deal.id}, ${stage + 1})">Forward →</button>` : ''}
+          </div>
+        </div>
+      `;
+    });
+
+    stagesHtml += `
+      <div class="stage-column">
+        <div class="stage-header stage${stage}">
+          <div>${STAGES[stage]}</div>
+          <div class="stage-count">${dealsInStage.length}</div>
+          <div class="stage-label">$${(stageValue / 1000).toFixed(0)}K</div>
+        </div>
+        <div class="deals-container">${dealsHtml || '<p style="text-align: center; color: #999; padding: 20px;">No deals</p>'}</div>
+      </div>
+    `;
+  });
+
+  document.getElementById('pipelineStages').innerHTML = stagesHtml;
+  document.getElementById('totalPipelineValue').textContent = '$' + (totalValue / 1000).toFixed(0) + 'K';
+  document.getElementById('totalDeals').textContent = totalDeals;
+  document.getElementById('closedDeals').textContent = closedCount;
+  document.getElementById('winRate').textContent = ((closedCount / totalDeals) * 100).toFixed(1) + '%';
+}
+
+function moveDeal(dealId, newStage) {
+  const deal = appData.deals.find(d => d.id === dealId);
+  if (deal) {
+    deal.stage = Math.max(0, Math.min(4, newStage));
+    saveData();
+    renderPipeline();
+    alert(`✓ Deal moved to ${STAGES[deal.stage]}`);
+  }
+}
+
+function renderAllDeals() {
+  let html = '';
+  appData.deals.forEach(deal => {
+    const rep = appData.users.find(u => u.id === deal.repId);
+    html += `
+      <tr>
+        <td>${deal.name}</td>
+        <td>${deal.customer}</td>
+        <td>${deal.amount}</td>
+        <td>${rep.name}</td>
+        <td><span class="deal-status ${Object.values(STAGES).find((v, i) => i === deal.stage).toLowerCase()}">${STAGES[deal.stage]}</span></td>
+        <td><button class="btn" style="padding: 5px 10px; font-size: 12px;" onclick="editDeal(${deal.id})">Edit</button></td>
+      </tr>
+    `;
+  });
+  document.getElementById('dealsList').innerHTML = html;
+}
+
+function renderTeamList() {
+  const salesReps = appData.users.filter(u => u.role === 'sales');
+  let html = '';
+  
+  salesReps.forEach(rep => {
+    const repDeals = appData.deals.filter(d => d.repId === rep.id);
+    const repValue = repDeals.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
+    
+    html += `
+      <li class="team-member">
+        <div class="info">
+          <strong>${rep.name}</strong>
+          <p style="font-size: 12px; color: #666;">${rep.email}</p>
+          <p style="font-size: 11px; color: #999;">${repDeals.length} deals • $${(repValue / 1000).toFixed(0)}K pipeline</p>
+        </div>
+        <span class="status active">Active</span>
+        <button class="btn btn-danger" onclick="removeTeamMember(${rep.id})">Remove</button>
+      </li>
+    `;
+  });
+  
+  document.getElementById('teamList').innerHTML = html;
+}
+
+function renderReports() {
+  renderStageChart();
+  renderTeamChart();
+  renderProgressionReport();
+}
+
+function renderStageChart() {
+  const ctx = document.getElementById('stageChart');
+  if (!ctx) return;
+  if (window.stageChartInstance) window.stageChartInstance.destroy();
+  
+  const stages = [0, 1, 2, 3, 4];
+  const stageValues = stages.map(s => {
+    const value = appData.deals.filter(d => d.stage === s).reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
+    return value / 1000;
+  });
+  
+  window.stageChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: stages.map(s => STAGES[s]),
+      datasets: [{
+        label: 'Deal Value ($K)',
+        data: stageValues,
+        backgroundColor: stages.map(s => STAGE_COLORS[s])
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function renderTeamChart() {
+  const ctx = document.getElementById('teamChart');
+  if (!ctx) return;
+  if (window.teamChartInstance) window.teamChartInstance.destroy();
+  
+  const salesReps = appData.users.filter(u => u.role === 'sales');
+  const teamValues = salesReps.map(rep => {
+    const value = appData.deals.filter(d => d.repId === rep.id).reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
+    return value / 1000;
+  });
+  
+  window.teamChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: salesReps.map(r => r.name),
+      datasets: [{
+        label: 'Pipeline Value ($K)',
+        data: teamValues,
+        backgroundColor: '#667eea'
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function renderProgressionReport() {
+  let html = '';
+  const salesReps = appData.users.filter(u => u.role === 'sales');
+  
+  salesReps.forEach(rep => {
+    const repDeals = appData.deals.filter(d => d.repId === rep.id);
+    html += `<div class="stage-progression">
+      <strong>${rep.name}</strong>
+      <p>Total: ${repDeals.length} deals | $${repDeals.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0) / 1000}K</p>
+    </div>`;
+  });
+  
+  document.getElementById('progressionReport').innerHTML = html;
+}
+
+function renderMyDeals() {
+  const myDeals = appData.deals.filter(d => d.repId === appData.currentUser.id);
+  let html = '';
+  
+  myDeals.forEach(deal => {
+    html += `
+      <tr>
+        <td>${deal.name}</td>
+        <td>${deal.customer}</td>
+        <td>${deal.amount}</td>
+        <td><span class="deal-status ${Object.values(STAGES).find((v, i) => i === deal.stage).toLowerCase()}">${STAGES[deal.stage]}</span></td>
+        <td>
+          <button class="btn" style="padding: 5px 10px; font-size: 12px;" onclick="editDeal(${deal.id})">Advance</button>
+        </td>
+      </tr>
+    `;
+  });
+  
+  document.getElementById('myDealsList').innerHTML = html || '<tr><td colspan="5">No deals yet</td></tr>';
+}
+
+function renderMyPerformance() {
+  const myDeals = appData.deals.filter(d => d.repId === appData.currentUser.id);
+  const myClosedDeals = myDeals.filter(d => d.stage === 4);
+  const myPipelineValue = myDeals.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
+  const myClosedValue = myClosedDeals.reduce((sum, d) => sum + parseInt(d.amount.replace(/\D/g, '')), 0);
+  
+  document.getElementById('myPipelineValue').textContent = '$' + (myPipelineValue / 1000).toFixed(0) + 'K';
+  document.getElementById('myDealsCount').textContent = myDeals.length;
+  document.getElementById('myClosedDeals').textContent = myClosedDeals.length;
+  document.getElementById('myClosedValue').textContent = '$' + (myClosedValue / 1000).toFixed(0) + 'K';
+  
+  renderMyChart();
+}
+
+function renderMyChart() {
+  const ctx = document.getElementById('myChart');
+  if (!ctx) return;
+  if (window.myChartInstance) window.myChartInstance.destroy();
+  
+  const myDeals = appData.deals.filter(d => d.repId === appData.currentUser.id);
+  const stageBreakdown = [0, 1, 2, 3, 4].map(s => myDeals.filter(d => d.stage === s).length);
+  
+  window.myChartInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: [0, 1, 2, 3, 4].map(s => STAGES[s]),
+      datasets: [{
+        data: stageBreakdown,
+        backgroundColor: [0, 1, 2, 3, 4].map(s => STAGE_COLORS[s])
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function openCreateDealModal() {
+  document.getElementById('dealModalTitle').textContent = 'Create New Deal';
+  document.getElementById('modalDealName').value = '';
+  document.getElementById('modalDealCustomer').value = '';
+  document.getElementById('modalDealAmount').value = '';
+  document.getElementById('modalDealDescription').value = '';
+  document.getElementById('modalDealRep').innerHTML = '<option value="">Select Sales Rep</option>';
+  
+  appData.users.filter(u => u.role === 'sales').forEach(rep => {
+    const option = document.createElement('option');
+    option.value = rep.id;
+    option.textContent = rep.name;
+    if (appData.currentUser.role === 'sales') option.selected = appData.currentUser.id === rep.id;
+    document.getElementById('modalDealRep').appendChild(option);
+  });
+  
+  if (appData.currentUser.role === 'sales') {
+    document.getElementById('modalDealRep').disabled = true;
+  }
+  
+  document.getElementById('dealModal').classList.add('show');
+}
+
+function closeDealModal() {
+  document.getElementById('dealModal').classList.remove('show');
+}
+
+function editDeal(dealId) {
+  const deal = appData.deals.find(d => d.id === dealId);
+  if (!deal) return;
+  
+  if (appData.currentUser.role === 'sales' && deal.repId !== appData.currentUser.id) {
+    alert('You can only edit your own deals');
+    return;
+  }
+  
+  document.getElementById('dealModalTitle').textContent = 'Edit Deal';
+  document.getElementById('modalDealName').value = deal.name;
+  document.getElementById('modalDealCustomer').value = deal.customer;
+  document.getElementById('modalDealAmount').value = deal.amount;
+  document.getElementById('modalDealDescription').value = deal.description;
+  document.getElementById('modalDealRep').innerHTML = '<option value="">Select Sales Rep</option>';
+  
+  appData.users.filter(u => u.role === 'sales').forEach(rep => {
+    const option = document.createElement('option');
+    option.value = rep.id;
+    option.textContent = rep.name;
+    option.selected = rep.id === deal.repId;
+    document.getElementById('modalDealRep').appendChild(option);
+  });
+  
+  if (appData.currentUser.role === 'sales') {
+    document.getElementById('modalDealRep').disabled = true;
+  }
+  
+  window.editingDealId = dealId;
+  document.getElementById('dealModal').classList.add('show');
+}
+
+function saveDeal() {
+  const name = document.getElementById('modalDealName').value;
+  const customer = document.getElementById('modalDealCustomer').value;
+  const amount = document.getElementById('modalDealAmount').value;
+  const description = document.getElementById('modalDealDescription').value;
+  const repId = parseInt(document.getElementById('modalDealRep').value);
+  
+  if (!name || !customer || !amount) {
+    alert('Please fill all required fields');
+    return;
+  }
+  
+  if (window.editingDealId) {
+    const deal = appData.deals.find(d => d.id === window.editingDealId);
+    deal.name = name;
+    deal.customer = customer;
+    deal.amount = amount;
+    deal.description = description;
+    if (appData.currentUser.role === 'manager') deal.repId = repId;
+  } else {
+    appData.deals.push({
+      id: appData.deals.length + 1,
+      name: name,
+      customer: customer,
+      amount: amount,
+      stage: 0,
+      repId: appData.currentUser.role === 'sales' ? appData.currentUser.id : repId,
+      description: description
+    });
+  }
+  
+  saveData();
+  alert('✓ Deal saved!');
+  closeDealModal();
+  
+  if (appData.currentUser.role === 'manager') {
+    renderPipeline();
+    renderAllDeals();
+  } else {
+    renderMyDeals();
+  }
+  
+  window.editingDealId = null;
+}
+
+function createNewDeal() {
+  const name = document.getElementById('newDealName').value;
+  const customer = document.getElementById('newDealCustomer').value;
+  const amount = document.getElementById('newDealAmount').value;
+  const description = document.getElementById('newDealDescription').value;
+  
+  if (!name || !customer || !amount) {
+    alert('Please fill all required fields');
+    return;
+  }
+  
+  appData.deals.push({
+    id: appData.deals.length + 1,
+    name: name,
+    customer: customer,
+    amount: amount,
+    stage: 0,
+    repId: appData.currentUser.id,
+    description: description
+  });
+  
+  saveData();
+  alert('✓ Deal created! Starting at Request stage.');
+  
+  document.getElementById('newDealName').value = '';
+  document.getElementById('newDealCustomer').value = '';
+  document.getElementById('newDealAmount').value = '';
+  document.getElementById('newDealDescription').value = '';
+  
+  renderMyDeals();
+}
+
+function openAddTeamModal() {
+  document.getElementById('addTeamModal').classList.add('show');
+}
+
+function closeAddTeamModal() {
+  document.getElementById('addTeamModal').classList.remove('show');
+}
+
+function addTeamMember() {
+  const name = document.getElementById('newTeamName').value;
+  const email = document.getElementById('newTeamEmail').value;
+  const password = document.getElementById('newTeamPassword').value;
+  
+  if (!name || !email || !password) {
+    alert('All fields required');
+    return;
+  }
+  
+  appData.users.push({
+    id: appData.users.length + 1,
+    name: name,
+    email: email,
+    password: password,
+    role: 'sales'
+  });
+  
+  saveData();
+  alert('✅ Sales rep added! Email: ' + email);
+  
+  document.getElementById('newTeamName').value = '';
+  document.getElementById('newTeamEmail').value = '';
+  document.getElementById('newTeamPassword').value = '';
+  closeAddTeamModal();
+  renderTeamList();
+}
+
+function removeTeamMember(userId) {
+  if (confirm('Remove this team member?')) {
+    appData.users = appData.users.filter(u => u.id !== userId);
+    appData.deals = appData.deals.filter(d => d.repId !== userId);
+    saveData();
+    renderTeamList();
+  }
+}
+
+function refreshPipeline() {
+  renderPipeline();
+  alert('✓ Pipeline refreshed');
+}
+
+loadData();
+if (appData.currentUser) {
+  document.getElementById('loginModal').classList.remove('show');
+  document.getElementById('currentUser').textContent = appData.currentUser.name;
+  if (appData.currentUser.role === 'manager') {
+    document.getElementById('managerMenu').style.display = 'block';
+    renderPipeline();
+  } else {
+    document.getElementById('teamMenu').style.display = 'block';
+    renderMyDeals();
+  }
+}
+</script>
+</body>
+</html>
