@@ -1,59 +1,78 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Sales Dashboard</title>
+<title>Sales Dashboard - Editable</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body { font-family: Arial; background: #667eea; margin: 0; padding: 20px; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial; background: #667eea; padding: 20px; }
 .dash { max-width: 1200px; margin: auto; }
-.header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-.header h1 { margin: 0; color: #333; }
-.header p { margin: 5px 0 0 0; color: #666; font-size: 14px; }
+.header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.header h1 { color: #333; }
+.header p { color: #666; font-size: 14px; margin-top: 5px; }
+.btn-group { display: flex; gap: 10px; }
+button { padding: 10px 15px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+button:hover { background: #764ba2; }
+.btn-secondary { background: #f093fb; }
+.btn-secondary:hover { background: #764ba2; }
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-.card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; }
 .card h3 { margin: 0 0 10px 0; color: #999; font-size: 12px; font-weight: bold; }
-.card .value { font-size: 24px; font-weight: bold; color: #333; }
+.card .value { font-size: 24px; font-weight: bold; color: #333; cursor: pointer; }
+.card .value:hover { color: #667eea; }
 .card .change { font-size: 12px; color: green; margin-top: 5px; }
+.edit-icon { margin-left: 10px; cursor: pointer; color: #667eea; }
+input[type="text"], input[type="number"], textarea { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: Arial; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+.modal.show { display: flex; }
+.modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%; }
+.modal-content h2 { margin-bottom: 20px; color: #333; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+.form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+.modal-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 .charts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
 .chart-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.chart-card h2 { margin-top: 0; font-size: 16px; color: #333; }
+.chart-card h2 { margin-top: 0; font-size: 16px; color: #333; margin-bottom: 15px; }
 .table-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.table-card h2 { margin-top: 0; font-size: 16px; color: #333; margin-bottom: 15px; }
 table { width: 100%; border-collapse: collapse; }
 th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: bold; border-bottom: 1px solid #ddd; }
 td { padding: 12px; border-bottom: 1px solid #ddd; }
 .positive { color: green; font-weight: bold; }
-@media (max-width: 768px) { .metrics { grid-template-columns: repeat(2, 1fr); } .charts { grid-template-columns: 1fr; } }
+.edit-cell { cursor: pointer; color: #667eea; }
+.edit-cell:hover { text-decoration: underline; }
+.upload-section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.upload-section h2 { font-size: 16px; color: #333; margin-bottom: 15px; }
+.upload-area { border: 2px dashed #667eea; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; }
+.upload-area:hover { background: #f0f0f0; }
+input[type="file"] { display: none; }
+@media (max-width: 768px) { .metrics { grid-template-columns: repeat(2, 1fr); } .charts { grid-template-columns: 1fr; } .header { flex-direction: column; align-items: flex-start; } }
 </style>
 </head>
 <body>
 <div class="dash">
   <div class="header">
-    <h1>📊 Sales & Revenue Dashboard</h1>
-    <p>Real-time business performance metrics</p>
+    <div>
+      <h1>📊 Sales & Revenue Dashboard</h1>
+      <p>Click any metric to edit • Upload CSV to import data</p>
+    </div>
+    <div class="btn-group">
+      <button onclick="openMetricsModal()">✏️ Edit Metrics</button>
+      <button class="btn-secondary" onclick="resetData()">🔄 Reset Data</button>
+    </div>
   </div>
 
-  <div class="metrics">
-    <div class="card">
-      <h3>TOTAL REVENUE</h3>
-      <div class="value">$385K</div>
-      <div class="change">+12.5%</div>
+  <div class="upload-section">
+    <h2>📁 Import Data from CSV</h2>
+    <div class="upload-area" onclick="document.getElementById('csvFile').click()">
+      <p>Click to upload CSV or drag & drop</p>
+      <p style="font-size: 12px; color: #999;">Format: Product, Units Sold, Revenue, Growth</p>
     </div>
-    <div class="card">
-      <h3>TOTAL SALES</h3>
-      <div class="value">3,810</div>
-      <div class="change">+8.3%</div>
-    </div>
-    <div class="card">
-      <h3>AVG ORDER VALUE</h3>
-      <div class="value">$101</div>
-      <div class="change">+4.2%</div>
-    </div>
-    <div class="card">
-      <h3>GROWTH RATE</h3>
-      <div class="value">7.2%</div>
-      <div class="change">+2.1%</div>
-    </div>
+    <input type="file" id="csvFile" accept=".csv" onchange="handleCSVUpload(event)">
   </div>
+
+  <div class="metrics" id="metricsContainer"></div>
 
   <div class="charts">
     <div class="chart-card">
@@ -67,82 +86,334 @@ td { padding: 12px; border-bottom: 1px solid #ddd; }
   </div>
 
   <div class="table-card">
-    <h2>Top Products</h2>
-    <table>
+    <h2>Top Products <button style="padding: 5px 10px; font-size: 12px;" onclick="openProductModal()">+ Add</button></h2>
+    <table id="productsTable">
       <tr>
         <th>Product</th>
         <th>Units Sold</th>
         <th>Revenue</th>
         <th>Growth</th>
-      </tr>
-      <tr>
-        <td>Product A</td>
-        <td>1,250</td>
-        <td>$35,000</td>
-        <td class="positive">+12%</td>
-      </tr>
-      <tr>
-        <td>Product B</td>
-        <td>890</td>
-        <td>$28,000</td>
-        <td class="positive">+8%</td>
-      </tr>
-      <tr>
-        <td>Product C</td>
-        <td>650</td>
-        <td>$22,000</td>
-        <td class="positive">+5%</td>
-      </tr>
-      <tr>
-        <td>Product D</td>
-        <td>420</td>
-        <td>$15,000</td>
-        <td class="positive">+2%</td>
+        <th>Action</th>
       </tr>
     </table>
   </div>
 </div>
 
-<script>
-const lineCtx = document.getElementById('lineChart').getContext('2d');
-new Chart(lineCtx, {
-  type: 'line',
-  data: {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [
-      {
-        label: 'Sales',
-        data: [45000, 52000, 48000, 61000, 55000, 67000],
-        borderColor: '#667eea',
-        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-        borderWidth: 2,
-        tension: 0.4
-      },
-      {
-        label: 'Revenue',
-        data: [52000, 61000, 55000, 73000, 68000, 82000],
-        borderColor: '#764ba2',
-        backgroundColor: 'rgba(118, 75, 162, 0.1)',
-        borderWidth: 2,
-        tension: 0.4
-      }
-    ]
-  },
-  options: { responsive: true, maintainAspectRatio: true }
-});
+<!-- Metrics Edit Modal -->
+<div id="metricsModal" class="modal">
+  <div class="modal-content">
+    <h2>Edit Key Metrics</h2>
+    <div class="form-group">
+      <label>Total Revenue</label>
+      <input type="text" id="editRevenue">
+    </div>
+    <div class="form-group">
+      <label>Total Sales</label>
+      <input type="number" id="editSales">
+    </div>
+    <div class="form-group">
+      <label>Avg Order Value</label>
+      <input type="text" id="editAvgOrder">
+    </div>
+    <div class="form-group">
+      <label>Growth Rate</label>
+      <input type="number" id="editGrowth" step="0.1">
+    </div>
+    <div class="modal-buttons">
+      <button onclick="closeMetricsModal()">Cancel</button>
+      <button class="btn-secondary" onclick="saveMetrics()">Save</button>
+    </div>
+  </div>
+</div>
 
-const pieCtx = document.getElementById('pieChart').getContext('2d');
-new Chart(pieCtx, {
-  type: 'doughnut',
-  data: {
-    labels: ['Product A', 'Product B', 'Product C', 'Product D'],
-    datasets: [{
-      data: [35000, 28000, 22000, 15000],
-      backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe']
-    }]
+<!-- Product Edit Modal -->
+<div id="productModal" class="modal">
+  <div class="modal-content">
+    <h2 id="productModalTitle">Add New Product</h2>
+    <div class="form-group">
+      <label>Product Name</label>
+      <input type="text" id="productName">
+    </div>
+    <div class="form-group">
+      <label>Units Sold</label>
+      <input type="number" id="productUnits">
+    </div>
+    <div class="form-group">
+      <label>Revenue</label>
+      <input type="text" id="productRevenue">
+    </div>
+    <div class="form-group">
+      <label>Growth %</label>
+      <input type="text" id="productGrowth">
+    </div>
+    <div class="modal-buttons">
+      <button onclick="closeProductModal()">Cancel</button>
+      <button class="btn-secondary" onclick="saveProduct()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentProductIndex = -1;
+
+// Default data
+let data = {
+  metrics: {
+    revenue: '$385K',
+    sales: 3810,
+    avgOrder: '$101',
+    growth: 7.2
   },
-  options: { responsive: true, maintainAspectRatio: true }
-});
+  products: [
+    { name: 'Product A', units: 1250, revenue: '$35,000', growth: '+12%' },
+    { name: 'Product B', units: 890, revenue: '$28,000', growth: '+8%' },
+    { name: 'Product C', units: 650, revenue: '$22,000', growth: '+5%' },
+    { name: 'Product D', units: 420, revenue: '$15,000', growth: '+2%' }
+  ],
+  chartData: {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    sales: [45000, 52000, 48000, 61000, 55000, 67000],
+    revenue: [52000, 61000, 55000, 73000, 68000, 82000]
+  }
+};
+
+// Load from localStorage
+function loadData() {
+  const saved = localStorage.getItem('dashboardData');
+  if (saved) data = JSON.parse(saved);
+  render();
+}
+
+// Save to localStorage
+function saveData() {
+  localStorage.setItem('dashboardData', JSON.stringify(data));
+}
+
+function render() {
+  renderMetrics();
+  renderProducts();
+  renderCharts();
+  saveData();
+}
+
+function renderMetrics() {
+  const container = document.getElementById('metricsContainer');
+  container.innerHTML = `
+    <div class="card" onclick="openMetricsModal()">
+      <h3>TOTAL REVENUE</h3>
+      <div class="value">${data.metrics.revenue} <span class="edit-icon">✏️</span></div>
+      <div class="change">+12.5%</div>
+    </div>
+    <div class="card" onclick="openMetricsModal()">
+      <h3>TOTAL SALES</h3>
+      <div class="value">${data.metrics.sales} <span class="edit-icon">✏️</span></div>
+      <div class="change">+8.3%</div>
+    </div>
+    <div class="card" onclick="openMetricsModal()">
+      <h3>AVG ORDER VALUE</h3>
+      <div class="value">${data.metrics.avgOrder} <span class="edit-icon">✏️</span></div>
+      <div class="change">+4.2%</div>
+    </div>
+    <div class="card" onclick="openMetricsModal()">
+      <h3>GROWTH RATE</h3>
+      <div class="value">${data.metrics.growth}% <span class="edit-icon">✏️</span></div>
+      <div class="change">+2.1%</div>
+    </div>
+  `;
+}
+
+function renderProducts() {
+  const table = document.getElementById('productsTable');
+  let html = `<tr>
+    <th>Product</th>
+    <th>Units Sold</th>
+    <th>Revenue</th>
+    <th>Growth</th>
+    <th>Action</th>
+  </tr>`;
+  
+  data.products.forEach((p, i) => {
+    html += `<tr>
+      <td class="edit-cell" onclick="editProduct(${i})">${p.name}</td>
+      <td class="edit-cell" onclick="editProduct(${i})">${p.units}</td>
+      <td class="edit-cell" onclick="editProduct(${i})">${p.revenue}</td>
+      <td class="positive edit-cell" onclick="editProduct(${i})">${p.growth}</td>
+      <td><button style="padding: 5px 10px; font-size: 12px; background: red;" onclick="deleteProduct(${i})">🗑️</button></td>
+    </tr>`;
+  });
+  
+  table.innerHTML = html;
+}
+
+function renderCharts() {
+  renderLineChart();
+  renderPieChart();
+}
+
+let lineChart, pieChart;
+
+function renderLineChart() {
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  if (lineChart) lineChart.destroy();
+  
+  lineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.chartData.labels,
+      datasets: [
+        {
+          label: 'Sales',
+          data: data.chartData.sales,
+          borderColor: '#667eea',
+          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          borderWidth: 2,
+          tension: 0.4
+        },
+        {
+          label: 'Revenue',
+          data: data.chartData.revenue,
+          borderColor: '#764ba2',
+          backgroundColor: 'rgba(118, 75, 162, 0.1)',
+          borderWidth: 2,
+          tension: 0.4
+        }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function renderPieChart() {
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  if (pieChart) pieChart.destroy();
+  
+  const revenues = data.products.map(p => parseInt(p.revenue.replace(/\D/g, '')));
+  
+  pieChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: data.products.map(p => p.name),
+      datasets: [{
+        data: revenues,
+        backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe']
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: true }
+  });
+}
+
+function openMetricsModal() {
+  document.getElementById('editRevenue').value = data.metrics.revenue;
+  document.getElementById('editSales').value = data.metrics.sales;
+  document.getElementById('editAvgOrder').value = data.metrics.avgOrder;
+  document.getElementById('editGrowth').value = data.metrics.growth;
+  document.getElementById('metricsModal').classList.add('show');
+}
+
+function closeMetricsModal() {
+  document.getElementById('metricsModal').classList.remove('show');
+}
+
+function saveMetrics() {
+  data.metrics.revenue = document.getElementById('editRevenue').value;
+  data.metrics.sales = parseInt(document.getElementById('editSales').value);
+  data.metrics.avgOrder = document.getElementById('editAvgOrder').value;
+  data.metrics.growth = parseFloat(document.getElementById('editGrowth').value);
+  render();
+  closeMetricsModal();
+}
+
+function openProductModal() {
+  currentProductIndex = -1;
+  document.getElementById('productModalTitle').textContent = 'Add New Product';
+  document.getElementById('productName').value = '';
+  document.getElementById('productUnits').value = '';
+  document.getElementById('productRevenue').value = '';
+  document.getElementById('productGrowth').value = '';
+  document.getElementById('productModal').classList.add('show');
+}
+
+function editProduct(index) {
+  currentProductIndex = index;
+  const p = data.products[index];
+  document.getElementById('productModalTitle').textContent = 'Edit Product';
+  document.getElementById('productName').value = p.name;
+  document.getElementById('productUnits').value = p.units;
+  document.getElementById('productRevenue').value = p.revenue;
+  document.getElementById('productGrowth').value = p.growth;
+  document.getElementById('productModal').classList.add('show');
+}
+
+function closeProductModal() {
+  document.getElementById('productModal').classList.remove('show');
+}
+
+function saveProduct() {
+  const product = {
+    name: document.getElementById('productName').value || 'Product',
+    units: parseInt(document.getElementById('productUnits').value) || 0,
+    revenue: document.getElementById('productRevenue').value || '$0',
+    growth: document.getElementById('productGrowth').value || '+0%'
+  };
+  
+  if (currentProductIndex === -1) {
+    data.products.push(product);
+  } else {
+    data.products[currentProductIndex] = product;
+  }
+  
+  render();
+  closeProductModal();
+}
+
+function deleteProduct(index) {
+  if (confirm('Delete this product?')) {
+    data.products.splice(index, 1);
+    render();
+  }
+}
+
+function resetData() {
+  if (confirm('Reset all data to defaults?')) {
+    localStorage.removeItem('dashboardData');
+    location.reload();
+  }
+}
+
+function handleCSVUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const csv = e.target.result;
+    const lines = csv.split('\n');
+    const newProducts = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim() === '') continue;
+      const cols = lines[i].split(',');
+      if (cols.length >= 4) {
+        newProducts.push({
+          name: cols[0].trim(),
+          units: parseInt(cols[1]) || 0,
+          revenue: cols[2].trim(),
+          growth: cols[3].trim()
+        });
+      }
+    }
+    
+    if (newProducts.length > 0) {
+      data.products = newProducts;
+      render();
+      alert('✅ Data imported successfully!');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// Initialize
+loadData();
 </script>
 </body>
 </html>
